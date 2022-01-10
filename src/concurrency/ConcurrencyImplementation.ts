@@ -7,7 +7,7 @@ import { Page, LaunchOptions } from 'puppeteer';
  * The ConcurrencyImplementation creates WorkerInstances. Workers create JobInstances:
  * One WorkerInstance per maxWorkers, one JobInstance per job
  */
-export default abstract class ConcurrencyImplementation {
+export default abstract class ConcurrencyImplementation<JobData = unknown> {
 
     protected options: LaunchOptions;
     protected puppeteer: any;
@@ -35,7 +35,7 @@ export default abstract class ConcurrencyImplementation {
      * Creates a worker and returns it
      */
     public abstract async workerInstance(perBrowserOptions: LaunchOptions | undefined):
-        Promise<WorkerInstance>;
+        Promise<WorkerInstance<JobData>>;
 
 }
 
@@ -43,8 +43,8 @@ export default abstract class ConcurrencyImplementation {
  * WorkerInstances are created by calling the workerInstance function.
  * In case maxWorkers is set to 4, 4 workers will be created.
  */
-export interface WorkerInstance {
-    jobInstance: () => Promise<JobInstance>;
+export interface WorkerInstance<JobData = unknown> {
+    jobInstance: (data: JobData) => Promise<JobInstance>;
 
     /**
      * Closes the worker (called when the cluster is about to shut down)
