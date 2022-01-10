@@ -88,7 +88,7 @@ export interface ResourceData {
     [key: string]: any;
 }
 
-export type ConcurrencyImplementationClassType = new (
+export type ConcurrencyImplementationClassType = new <JobData>(
     options: LaunchOptions,
     puppeteer: any,
-) => ConcurrencyImplementation;
+) => ConcurrencyImplementation<JobData>;

@@ -10,7 +10,7 @@ import { LaunchOptions, Page } from 'puppeteer';
 import Queue from './Queue';
 import SystemMonitor from './SystemMonitor';
 import { EventEmitter } from 'events';
-import ConcurrencyImplementation, { WorkerInstance, ConcurrencyImplementationClassType }
+import ConcurrencyImplementation, { ConcurrencyImplementationClassType }
     from './concurrency/ConcurrencyImplementation';
 import Workers from './Workers';
 
