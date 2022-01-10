@@ -31,7 +31,7 @@ export default class SystemMonitor {
                 () => {
                     this.calcLoad();
                     this.interval = setInterval(() => this.calcLoad(), MEASURE_INTERVAL);
-                    resolve();
+                    resolve(undefined);
                 },
                 INIT_INTERVAL,
             );

@@ -304,7 +304,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
                 const jobWillRetry = job.tries <= this.options.retryLimit;
                 this.emit('taskerror', result.error, job.data, jobWillRetry);
                 if (jobWillRetry) {
-                    let delayUntil = undefined;
+                    let delayUntil: number | undefined = undefined;
                     if (this.options.retryDelay !== 0) {
                         delayUntil = Date.now() + this.options.retryDelay;
                     }
