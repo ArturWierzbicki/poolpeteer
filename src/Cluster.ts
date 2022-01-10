@@ -16,8 +16,8 @@ import Workers from './Workers';
 
 const debug = util.debugGenerator('Cluster');
 
-interface ClusterOptions {
-    concurrency: number | ConcurrencyImplementationClassType;
+interface ClusterOptions<JobData = unknown> {
+    concurrency: number | ConcurrencyImplementationClassType<JobData>;
     maxConcurrency: number;
     workerCreationDelay: number;
     puppeteerOptions: LaunchOptions;
@@ -35,7 +35,7 @@ type Partial<T> = {
     [P in keyof T]?: T[P];
 };
 
-type ClusterOptionsArgument = Partial<ClusterOptions>;
+type ClusterOptionsArgument<JobData> = Partial<ClusterOptions<JobData>>;
 
 const DEFAULT_OPTIONS: ClusterOptions = {
     concurrency: 2, // CONTEXT
@@ -76,7 +76,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
     static CONCURRENCY_CONTEXT = 2; // no cookie sharing (uses contexts)
     static CONCURRENCY_BROWSER = 3; // no cookie sharing and individual processes (uses contexts)
 
-    private options: ClusterOptions;
+    private options: ClusterOptions<JobData>;
     private perBrowserOptions: LaunchOptions[] | null = null;
     private workers: Workers<JobData, ReturnData> = null as any as Workers<JobData, ReturnData>;
 
@@ -102,7 +102,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
 
     private checkForWorkInterval: NodeJS.Timer | null = null;
 
-    public static async launch(options: ClusterOptionsArgument) {
+    public static async launch<JobData>(options: ClusterOptionsArgument<JobData>) {
         debug('Launching');
         const cluster = new Cluster(options);
         await cluster.init();
@@ -110,7 +110,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         return cluster;
     }
 
-    private constructor(options: ClusterOptionsArgument) {
+    private constructor(options: ClusterOptionsArgument<JobData>) {
         super();
 
         this.options = {

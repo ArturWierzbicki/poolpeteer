@@ -35,7 +35,7 @@ afterAll(() => {
 describe('options', () => {
 
     async function cookieTest(concurrencyType: number) {
-        const cluster = await Cluster.launch({
+        const cluster = await Cluster.launch<string>({
             puppeteerOptions: { args: ['--no-sandbox'] },
             maxConcurrency: 1,
             concurrency: concurrencyType,
@@ -252,7 +252,7 @@ describe('options', () => {
             });
 
             test('sameDomainDelay with one worker', async () => {
-                const cluster = await Cluster.launch({
+                const cluster = await Cluster.launch<{url: string, counterShouldBe: number}>({
                     concurrency,
                     puppeteerOptions: { args: ['--no-sandbox'] },
                     maxConcurrency: 1,
@@ -282,7 +282,7 @@ describe('options', () => {
             });
 
             test('sameDomainDelay with multiple workers', async () => {
-                const cluster = await Cluster.launch({
+                const cluster = await Cluster.launch<{url: string, counterShouldBe: number}>({
                     concurrency,
                     puppeteerOptions: { args: ['--no-sandbox'] },
                     maxConcurrency: 2,
@@ -371,7 +371,7 @@ describe('options', () => {
             });
 
             test('works with complex objects', async () => {
-                const cluster = await Cluster.launch({
+                const cluster = await Cluster.launch<{a:{b:string}}>({
                     concurrency,
                     puppeteerOptions: { args: ['--no-sandbox'] },
                     maxConcurrency: 1,
@@ -460,7 +460,7 @@ describe('options', () => {
             test('execute/queue errors', async () => {
                 expect.assertions(2);
 
-                const cluster = await Cluster.launch({
+                const cluster = await Cluster.launch<string>({
                     concurrency,
                     puppeteerOptions: { args: ['--no-sandbox'] },
                     maxConcurrency: 1,
@@ -552,7 +552,7 @@ describe('options', () => {
         expect.assertions(2);
 
         const executablePath = puppeteer.executablePath();
-        const cluster = await Cluster.launch({
+        const cluster = await Cluster.launch<string>({
             concurrency: Cluster.CONCURRENCY_BROWSER,
             puppeteerOptions: {
                 executablePath,
@@ -621,7 +621,7 @@ describe('options', () => {
                 }
             }
 
-            const cluster = await Cluster.launch({
+            const cluster = await Cluster.launch<string>({
                 concurrency: CustomConcurrency,
                 puppeteerOptions: { args: ['--no-sandbox'] },
                 maxConcurrency: 1,
@@ -645,7 +645,7 @@ describe('options', () => {
         test('Reuse existing implementation', async () => {
             expect.assertions(2);
 
-            const cluster = await Cluster.launch({
+            const cluster = await Cluster.launch<string>({
                 concurrency: Browser, // use one of the existing implementations
                 puppeteerOptions: { args: ['--no-sandbox'] },
                 maxConcurrency: 1,
@@ -721,7 +721,7 @@ describe('options', () => {
                 }
             }
 
-            const cluster = await Cluster.launch({
+            const cluster = await Cluster.launch<string>({
                 perBrowserOptions,
                 concurrency: TestConcurrency,
                 maxConcurrency: 1,

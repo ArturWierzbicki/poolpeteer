@@ -90,7 +90,7 @@ export interface ResourceData {
     [key: string]: any;
 }
 
-export type ConcurrencyImplementationClassType = new <JobData>(
+export type ConcurrencyImplementationClassType<JobData = unknown> = new (
     options: puppeteer.LaunchOptions,
     puppeteer: any,
 ) => ConcurrencyImplementation<JobData>;
