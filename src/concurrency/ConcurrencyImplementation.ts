@@ -34,8 +34,14 @@ export default abstract class ConcurrencyImplementation<JobData = unknown> {
     /**
      * Creates a worker and returns it
      */
-    public abstract async workerInstance(perBrowserOptions: LaunchOptions | undefined):
+    public abstract async workerInstance(perBrowserOptions: LaunchOptions | undefined,
+                                         onShutdown: (workerId: number) => void,
+                                         jobData?: JobData):
         Promise<WorkerInstance<JobData>>;
+
+    public getExistingWorkerInstanceFor(jobData?: JobData): WorkerInstance<JobData> | undefined {
+        return undefined;
+    }
 
 }
 
@@ -44,7 +50,7 @@ export default abstract class ConcurrencyImplementation<JobData = unknown> {
  * In case maxWorkers is set to 4, 4 workers will be created.
  */
 export interface WorkerInstance<JobData = unknown> {
-    jobInstance: (data: JobData) => Promise<JobInstance>;
+    jobInstance: (data?: JobData) => Promise<JobInstance>;
 
     /**
      * Closes the worker (called when the cluster is about to shut down)
@@ -56,6 +62,10 @@ export interface WorkerInstance<JobData = unknown> {
      * an error)
      */
     repair: () => Promise<void>;
+
+    canHandle?: (data?: JobData) => Promise<boolean>;
+
+    id: number;
 }
 
 /**

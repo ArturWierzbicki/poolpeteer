@@ -34,4 +34,14 @@ export default class Queue<T> {
         return this.list.shift();
     }
 
+    public peek(): T | undefined {
+        return this.list.length ? this.list[0] : undefined;
+    }
+
+    public remove(item: T) {
+        if (this.list.includes(item)) {
+            this.list.splice(this.list.indexOf(item), 1);
+        }
+    }
+
 }

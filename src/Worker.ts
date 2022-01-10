@@ -12,11 +12,11 @@ const DEFAULT_OPTIONS = {
     args: [],
 };
 
-interface WorkerOptions {
+interface WorkerOptions<JobData> {
     cluster: Cluster;
     args: string[];
     id: number;
-    browser: WorkerInstance;
+    browser: WorkerInstance<JobData>;
 }
 
 const BROWSER_INSTANCE_TRIES = 10;
@@ -33,16 +33,16 @@ export interface WorkData {
 
 export type WorkResult = WorkError | WorkData;
 
-export default class Worker<JobData, ReturnData> implements WorkerOptions {
+export default class Worker<JobData, ReturnData> implements WorkerOptions<JobData> {
 
     cluster: Cluster;
     args: string[];
     id: number;
-    browser: WorkerInstance;
+    browser: WorkerInstance<JobData>;
 
-    activeTarget: Job<JobData, ReturnData> | null = null;
+    activeJobs: Job<JobData, ReturnData>[] = [];
 
-    public constructor({ cluster, args, id, browser }: WorkerOptions) {
+    public constructor({ cluster, args, id, browser }: WorkerOptions<JobData>) {
         this.cluster = cluster;
         this.args = args;
         this.id = id;
@@ -51,12 +51,18 @@ export default class Worker<JobData, ReturnData> implements WorkerOptions {
         debug(`Starting #${this.id}`);
     }
 
+    public async canHandle(
+        job: Job<JobData, ReturnData>,
+    ): Promise<boolean> {
+        return this.browser.canHandle?.(job.data) || false;
+    }
+
     public async handle(
             task: TaskFunction<JobData, ReturnData>,
             job: Job<JobData, ReturnData>,
             timeout: number,
         ): Promise<WorkResult> {
-        this.activeTarget = job;
+        this.activeJobs.push(job);
 
         let jobInstance: JobInstance | null = null;
         let page: Page | null = null;
@@ -118,7 +124,7 @@ export default class Worker<JobData, ReturnData> implements WorkerOptions {
             await this.browser.repair();
         }
 
-        this.activeTarget = null;
+        this.activeJobs.splice(this.activeJobs.indexOf(job), 1);
 
         if (errorState) {
             return {
@@ -139,6 +145,10 @@ export default class Worker<JobData, ReturnData> implements WorkerOptions {
             debug(`Unable to close worker browser. Error message: ${err.message}`);
         }
         debug(`Closed #${this.id}`);
+    }
+
+    public isIdle(): boolean {
+        return this.activeJobs.length === 0;
     }
 
 }

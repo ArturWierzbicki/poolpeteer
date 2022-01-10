@@ -12,6 +12,7 @@ import SystemMonitor from './SystemMonitor';
 import { EventEmitter } from 'events';
 import ConcurrencyImplementation, { WorkerInstance, ConcurrencyImplementationClassType }
     from './concurrency/ConcurrencyImplementation';
+import Workers from './Workers';
 
 const debug = util.debugGenerator('Cluster');
 
@@ -77,10 +78,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
 
     private options: ClusterOptions;
     private perBrowserOptions: LaunchOptions[] | null = null;
-    private workers: Worker<JobData, ReturnData>[] = [];
-    private workersAvail: Worker<JobData, ReturnData>[] = [];
-    private workersBusy: Worker<JobData, ReturnData>[] = [];
-    private workersStarting = 0;
+    private workers: Workers<JobData, ReturnData> = null as any as Workers<JobData, ReturnData>;
 
     private allTargetCount = 0;
     private jobQueue: Queue<Job<JobData, ReturnData>> = new Queue<Job<JobData, ReturnData>>();
@@ -89,7 +87,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
     private taskFunction: TaskFunction<JobData, ReturnData> | null = null;
     private idleResolvers: (() => void)[] = [];
     private waitForOneResolvers: ((data:JobData) => void)[] = [];
-    private browser: ConcurrencyImplementation | null = null;
+    private browser: ConcurrencyImplementation = null as any as ConcurrencyImplementation;
 
     private isClosed = false;
     private startTime = Date.now();
@@ -177,44 +175,6 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         this.checkForWorkInterval = setInterval(() => this.work(), CHECK_FOR_WORK_INTERVAL);
     }
 
-    private async launchWorker() {
-        // signal, that we are starting a worker
-        this.workersStarting += 1;
-        this.nextWorkerId += 1;
-        this.lastLaunchedWorkerTime = Date.now();
-
-        let nextWorkerOption;
-        if (this.perBrowserOptions && this.perBrowserOptions.length > 0) {
-            nextWorkerOption = this.perBrowserOptions.shift();
-        }
-
-        const workerId = this.nextWorkerId;
-
-        let workerBrowserInstance: WorkerInstance;
-        try {
-            workerBrowserInstance = await (this.browser as ConcurrencyImplementation)
-                .workerInstance(nextWorkerOption);
-        } catch (err) {
-            throw new Error(`Unable to launch browser for worker, error message: ${err.message}`);
-        }
-
-        const worker = new Worker<JobData, ReturnData>({
-            cluster: this,
-            args: [''], // this.options.args,
-            browser: workerBrowserInstance,
-            id: workerId,
-        });
-        this.workersStarting -= 1;
-
-        if (this.isClosed) {
-            // cluster was closed while we created a new worker (should rarely happen)
-            worker.close();
-        } else {
-            this.workersAvail.push(worker);
-            this.workers.push(worker);
-        }
-    }
-
     public async task(taskFunction: TaskFunction<JobData, ReturnData>) {
         this.taskFunction = taskFunction;
     }
@@ -245,23 +205,23 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         }
     }
 
+    private async scheduleNextWork() {
+
+        if (await this.workers.hasFreeCapacity(this.jobQueue.peek())) {
+            this.work();
+        }
+
+    }
+
     private async doWork() {
         if (this.jobQueue.size() === 0) { // no jobs available
-            if (this.workersBusy.length === 0) {
+            if (!this.workers.isAnyJobActive()) {
                 this.idleResolvers.forEach(resolve => resolve());
             }
             return;
         }
 
-        if (this.workersAvail.length === 0) { // no workers available
-            if (this.allowedToStartWorker()) {
-                await this.launchWorker();
-                this.work();
-            }
-            return;
-        }
-
-        const job = this.jobQueue.shift();
+        const job = this.jobQueue.peek();
 
         if (job === undefined) {
             // skip, there are items in the queue but they are all delayed
@@ -293,6 +253,23 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
             }
         }
 
+        if (!(await this.workers.canHandle(job))) { // no workers available
+            if (await this.workers.canLaunchWorker(job)) {
+                await this.workers.launchWorker(job);
+                this.work();
+            }
+            return;
+        }
+
+        const worker = await this.workers.getWorker(job);
+
+        if (!worker) {
+            // this shouldn't happen
+            return;
+        }
+
+        this.jobQueue.remove(job);
+
         // Check are all positive, let's actually run the job
         if (this.options.skipDuplicateUrls && url !== undefined) {
             this.duplicateCheckUrls.add(url);
@@ -301,13 +278,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
             this.lastDomainAccesses.set(domain, Date.now());
         }
 
-        const worker = this.workersAvail.shift() as Worker<JobData, ReturnData>;
-        this.workersBusy.push(worker);
-
-        if (this.workersAvail.length !== 0 || this.allowedToStartWorker()) {
-            // we can execute more work in parallel
-            this.work();
-        }
+        this.scheduleNextWork();
 
         let jobFunction;
         if (job.taskFunction !== undefined) {
@@ -353,27 +324,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         );
         this.waitForOneResolvers = [];
 
-        // add worker to available workers again
-        const workerIndex = this.workersBusy.indexOf(worker);
-        this.workersBusy.splice(workerIndex, 1);
-
-        this.workersAvail.push(worker);
-
         this.work();
-    }
-
-    private lastLaunchedWorkerTime: number = 0;
-
-    private allowedToStartWorker(): boolean {
-        const workerCount = this.workers.length + this.workersStarting;
-        return (
-            // option: maxConcurrency
-            (this.options.maxConcurrency === 0
-                || workerCount < this.options.maxConcurrency)
-            // just allow worker creaton every few milliseconds
-            && (this.options.workerCreationDelay === 0
-                || this.lastLaunchedWorkerTime + this.options.workerCreationDelay < Date.now())
-        );
     }
 
     // Type Guard for TypeScript
@@ -449,8 +400,7 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         clearInterval(this.checkForWorkInterval as NodeJS.Timer);
         clearTimeout(this.workCallTimeout as NodeJS.Timer);
 
-        // close workers
-        await Promise.all(this.workers.map(worker => worker.close()));
+        await this.workers.close();
 
         try {
             await (this.browser as ConcurrencyImplementation).close();
@@ -481,7 +431,9 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
         const now = Date.now();
         const timeDiff = now - this.startTime;
 
-        const doneTargets = this.allTargetCount - this.jobQueue.size() - this.workersBusy.length;
+        const doneTargets = this.allTargetCount - this.jobQueue.size() -
+            this.workers.busyWorkersCount();
+
         const donePercentage = this.allTargetCount === 0
             ? 1 : (doneTargets / this.allTargetCount);
         const donePercStr = (100 * donePercentage).toFixed(2);
@@ -509,30 +461,32 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
             + `, errors: ${this.errorCount} (${errorPerc}%)`);
         display.log(`== Remaining: ${timeRemining} (@ ${pagesPerSecond} pages/second)`);
         display.log(`== Sys. load: ${cpuUsage}% CPU / ${memoryUsage}% memory`);
-        display.log(`== Workers:   ${this.workers.length + this.workersStarting}`);
+        display.log(`== Workers:   ${this.workers.count()}`);
 
-        this.workers.forEach((worker, i) => {
-            const isIdle = this.workersAvail.indexOf(worker) !== -1;
+        const workers = this.workers.get();
+        workers.forEach((worker, i) => {
             let workOrIdle;
             let workerUrl = '';
-            if (isIdle) {
+            let jobCount = '';
+            if (worker.isIdle()) {
                 workOrIdle = 'IDLE';
             } else {
                 workOrIdle = 'WORK';
-                if (worker.activeTarget) {
-                    workerUrl = worker.activeTarget.getUrl() || 'UNKNOWN TARGET';
-                } else {
-                    workerUrl = 'NO TARGET (should not be happening)';
-                }
+
+                const jobs = worker.activeJobs;
+                jobCount = jobs.length > 1 ? `${jobs.length} JOBS: ` : '';
+
+                workerUrl = jobs.length ?
+                    worker.activeJobs.map(j => j.getUrl() || 'UNKNOWN TARGET').join(', ')
+                    : 'NO TARGET (should not be happening)';
             }
 
-            display.log(`   #${i} ${workOrIdle} ${workerUrl}`);
+            display.log(`   #${i} ${workOrIdle} ${jobCount} ${workerUrl}`);
         });
-        for (let i = 0; i < this.workersStarting; i += 1) {
-            display.log(`   #${this.workers.length + i} STARTING...`);
+        for (let i = 0; i < this.workers.getStartingCount(); i += 1) {
+            display.log(`   #${workers.length + i} STARTING...`);
         }
 
         display.resetCursor();
     }
-
 }

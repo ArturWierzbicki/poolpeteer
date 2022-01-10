@@ -11,6 +11,7 @@ export default abstract class SingleBrowserImplementation extends ConcurrencyImp
 
     protected browser: puppeteer.Browser | null = null;
 
+    private nextWorkerId = 0;
     private repairing: boolean = false;
     private repairRequested: boolean = false;
     private openInstances: number = 0;
@@ -63,7 +64,12 @@ export default abstract class SingleBrowserImplementation extends ConcurrencyImp
     public async workerInstance() {
         let resources: ResourceData;
 
+        const workerId = this.nextWorkerId;
+
+        this.nextWorkerId = this.nextWorkerId + 1;
+
         return {
+            id: workerId,
             jobInstance: async () => {
                 if (this.repairRequested) {
                     await this.repair();
