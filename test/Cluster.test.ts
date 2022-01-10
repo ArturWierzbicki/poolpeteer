@@ -585,6 +585,7 @@ describe('options', () => {
 
             class CustomConcurrency extends ConcurrencyImplementation {
                 private browser: puppeteer.Browser | undefined = undefined;
+
                 public async init() {
                     this.browser = await this.puppeteer.launch(this.options);
                 }
@@ -593,6 +594,7 @@ describe('options', () => {
                 }
                 public async workerInstance() {
                     return {
+                        id: 1,
                         jobInstance: async () => {
                             const page = await (this.browser as puppeteer.Browser).newPage();
 
@@ -692,6 +694,7 @@ describe('options', () => {
                 public async workerInstance(puppeteerOptions: puppeteer.LaunchOptions) {
                     expect(puppeteerOptions).toBe(perBrowserOptions[0]);
                     return {
+                        id: 1,
                         jobInstance: async () => {
                             const page = await (this.browser as puppeteer.Browser).newPage();
 

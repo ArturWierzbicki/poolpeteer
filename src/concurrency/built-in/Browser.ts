@@ -20,9 +20,9 @@ export default class Browser extends ConcurrencyImplementation {
         this.nextWorkerId = this.nextWorkerId + 1;
 
         const options = perBrowserOptions || this.options;
-        let chrome = await this.puppeteer.launch(options) as puppeteer.Browser;
+        let chrome = await this.puppeteer.launch(options);
         let page: puppeteer.Page;
-        let context: any; // puppeteer typings are old...
+        let context: puppeteer.BrowserContext;
 
         return {
             id: workerId,

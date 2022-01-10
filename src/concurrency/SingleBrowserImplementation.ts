@@ -39,7 +39,7 @@ export default abstract class SingleBrowserImplementation extends ConcurrencyImp
         }
 
         try {
-            this.browser = await this.puppeteer.launch(this.options) as puppeteer.Browser;
+            this.browser = await this.puppeteer.launch(this.options);
         } catch (err) {
             throw new Error('Unable to restart chrome.');
         }
