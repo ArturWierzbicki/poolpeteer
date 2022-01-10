@@ -37,19 +37,22 @@ export default class Workers<JobData = any, ReturnData = any> {
                                 },
                                 job.data);
 
-            const worker = new Worker<JobData, ReturnData>({
-                cluster: this.deps.cluster,
-                args: [''], // this.options.args,
-                browser: workerBrowserInstance,
-                id: workerBrowserInstance.id,
-            });
+            if (!(this.getWorkerById(workerBrowserInstance.id))) {
+                const worker = new Worker<JobData, ReturnData>({
+                    cluster: this.deps.cluster,
+                    args: [''], // this.options.args,
+                    browser: workerBrowserInstance,
+                    id: workerBrowserInstance.id,
+                });
 
-            if (this.isClosed) {
-                // cluster was closed while we created a new worker (should rarely happen)
-                worker.close();
-            } else {
-                this.workers.push(worker);
+                if (this.isClosed) {
+                    // cluster was closed while we created a new worker (should rarely happen)
+                    worker.close();
+                } else {
+                    this.workers.push(worker);
+                }
             }
+
         } catch (err) {
             throw new Error(`Unable to launch browser for worker, error message: ${err.message}`);
         } finally {
