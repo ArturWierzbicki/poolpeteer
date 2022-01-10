@@ -87,11 +87,10 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
     private taskFunction: TaskFunction<JobData, ReturnData> | null = null;
     private idleResolvers: (() => void)[] = [];
     private waitForOneResolvers: ((data:JobData) => void)[] = [];
-    private browser: ConcurrencyImplementation = null as any as ConcurrencyImplementation;
+    private browser = null as any as ConcurrencyImplementation<JobData>;
 
     private isClosed = false;
     private startTime = Date.now();
-    private nextWorkerId = -1;
 
     private monitoringInterval: NodeJS.Timer | null = null;
     private display: Display | null = null;
