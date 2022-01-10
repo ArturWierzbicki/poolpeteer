@@ -26,19 +26,19 @@ export default abstract class ConcurrencyImplementation<JobData = unknown> {
     /**
      * Initializes the manager
      */
-    public abstract async init(): Promise<void>;
+    public abstract init(): Promise<void>;
 
     /**
      * Closes the manager (called when cluster is about to shut down)
      */
-    public abstract async close(): Promise<void>;
+    public abstract close(): Promise<void>;
 
     /**
      * Creates a worker and returns it
      */
-    public abstract async workerInstance(perBrowserOptions: puppeteer.LaunchOptions | undefined,
-                                         onShutdown: (workerId: number) => void,
-                                         jobData?: JobData):
+    public abstract workerInstance(perBrowserOptions: puppeteer.LaunchOptions | undefined,
+                                   onShutdown: (workerId: number) => void,
+                                   jobData?: JobData):
         Promise<WorkerInstance<JobData>>;
 
     public getExistingWorkerInstanceFor(jobData?: JobData): WorkerInstance<JobData> | undefined {
