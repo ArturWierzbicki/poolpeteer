@@ -102,9 +102,10 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
 
     private checkForWorkInterval: NodeJS.Timer | null = null;
 
-    public static async launch<JobData>(options: ClusterOptionsArgument<JobData>) {
+    public static async launch<JobData,
+        ReturnData = unknown>(options: ClusterOptionsArgument<JobData>) {
         debug('Launching');
-        const cluster = new Cluster(options);
+        const cluster = new Cluster<JobData, ReturnData>(options);
         await cluster.init();
 
         return cluster;
