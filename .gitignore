@@ -4,6 +4,5 @@ data/
 .vscode/
 coverage/
 
-dist/
 
 examples/top-1m.csv
