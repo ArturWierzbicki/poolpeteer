@@ -149,6 +149,12 @@ export default class Cluster<JobData = any, ReturnData = any> extends EventEmitt
             throw new Error(`Unknown concurrency option: ${this.options.concurrency}`);
         }
 
+        this.workers = new Workers({
+            browserOptions, cluster: this, browser: this.browser,
+            maxConcurrency: this.options.maxConcurrency,
+            workerCreationDelay: this.options.workerCreationDelay
+        });
+
         if (typeof this.options.maxConcurrency !== 'number') {
             throw new Error('maxConcurrency must be of number type');
         }

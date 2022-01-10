@@ -22,7 +22,7 @@ export default class Workers<JobData = any, ReturnData = any> {
 
     private isClosed = false;
 
-    private constructor(private deps: WorkersDeps<JobData, ReturnData>) {}
+    constructor(private deps: WorkersDeps<JobData, ReturnData>) {}
 
     public async launchWorker(job: Job<JobData, ReturnData>) {
         // signal, that we are starting a worker

@@ -1,12 +1,22 @@
 import Job from './Job';
 import Worker from './Worker';
+import ConcurrencyImplementation from './concurrency/ConcurrencyImplementation';
+import { LaunchOptions } from 'puppeteer';
+import Cluster from './Cluster';
+declare type WorkersDeps<JobData, ReturnData> = {
+    browserOptions: LaunchOptions;
+    browser: ConcurrencyImplementation<JobData>;
+    cluster: Cluster;
+    maxConcurrency: number;
+    workerCreationDelay: number;
+};
 export default class Workers<JobData = any, ReturnData = any> {
     private deps;
     private workers;
     private workersStarting;
     private lastLaunchedWorkerTime;
     private isClosed;
-    private constructor();
+    constructor(deps: WorkersDeps<JobData, ReturnData>);
     launchWorker(job: Job<JobData, ReturnData>): Promise<void>;
     private allowedToStartWorker;
     isAnyJobActive(): boolean;
@@ -22,3 +32,4 @@ export default class Workers<JobData = any, ReturnData = any> {
     get(): Worker<JobData, ReturnData>[];
     getStartingCount(): number;
 }
+export {};
