@@ -1,7 +1,5 @@
-
-import * as puppeteer from 'puppeteer';
-
-type Puppeteer = typeof puppeteer;
+import * as puppeteer from "puppeteer";
+import { PuppeteerNode, PuppeteerNodeLaunchOptions } from "puppeteer";
 
 /**
  * ABSTRACT CLASS Needs to be implemented to manage one or more browsers via puppeteer instances
@@ -10,15 +8,17 @@ type Puppeteer = typeof puppeteer;
  * One WorkerInstance per maxWorkers, one JobInstance per job
  */
 export default abstract class ConcurrencyImplementation<JobData = unknown> {
-
-    protected options: puppeteer.LaunchOptions;
-    protected puppeteer: Puppeteer;
+    protected options: PuppeteerNodeLaunchOptions;
+    protected puppeteer: PuppeteerNode;
 
     /**
      * @param options  Options that should be provided to puppeteer.launch
      * @param puppeteer  puppeteer object (like puppeteer or puppeteer-core)
      */
-    public constructor(options: puppeteer.LaunchOptions, puppeteer: Puppeteer) {
+    public constructor(
+        options: PuppeteerNodeLaunchOptions,
+        puppeteer: PuppeteerNode
+    ) {
         this.options = options;
         this.puppeteer = puppeteer;
     }
@@ -36,15 +36,17 @@ export default abstract class ConcurrencyImplementation<JobData = unknown> {
     /**
      * Creates a worker and returns it
      */
-    public abstract workerInstance(perBrowserOptions: puppeteer.LaunchOptions | undefined,
-                                   onShutdown: (workerId: number) => void,
-                                   jobData?: JobData):
-        Promise<WorkerInstance<JobData>>;
+    public abstract workerInstance(
+        perBrowserOptions: puppeteer.LaunchOptions | undefined,
+        onShutdown: (workerId: number) => void,
+        jobData?: JobData
+    ): Promise<WorkerInstance<JobData>>;
 
-    public getExistingWorkerInstanceFor(jobData?: JobData): WorkerInstance<JobData> | undefined {
+    public getExistingWorkerInstanceFor(
+        jobData?: JobData
+    ): WorkerInstance<JobData> | undefined {
         return undefined;
     }
-
 }
 
 /**
@@ -91,6 +93,6 @@ export interface ResourceData {
 }
 
 export type ConcurrencyImplementationClassType<JobData = unknown> = new (
-    options: puppeteer.LaunchOptions,
-    puppeteer: any,
+    options: PuppeteerNodeLaunchOptions,
+    puppeteer: any
 ) => ConcurrencyImplementation<JobData>;
