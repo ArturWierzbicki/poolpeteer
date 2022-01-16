@@ -21,12 +21,12 @@ const concurrencyTypes = [
 beforeAll(async () => {
     // test server
     try {
-        let server = http.createServer((req, res) => {
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end("<html><body>puppeteer-cluster TEST</body></html>");
-        });
-        // TODO fix
-        testServer = server.listen(3001, "127.0.0.1" as any as number);
+        testServer = http
+            .createServer((req, res) => {
+                res.writeHead(200, { "Content-Type": "text/html" });
+                res.end("<html><body>puppeteer-cluster TEST</body></html>");
+            })
+            .listen(3001, "127.0.0.1");
     } catch (err: any) {
         console.log(err);
         throw err;
