@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import { ConcurrencyImplementationClassType } from "./concurrency/ConcurrencyImplementation";
 interface ClusterOptions<JobData = unknown> {
     concurrency: number | ConcurrencyImplementationClassType<JobData>;
-    workerShutdownTimer?: number;
+    workerShutdownTimeout?: number;
     maxConcurrency: number;
     workerCreationDelay: number;
     puppeteerOptions: PuppeteerNodeLaunchOptions;

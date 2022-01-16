@@ -5,7 +5,7 @@ import ConcurrencyImplementation, {
 import * as puppeteer from "puppeteer";
 import { LaunchOptions, PuppeteerNode } from "puppeteer";
 declare type BrowserPerRequestGroupConcurrencyDeps = {
-    workerShutdownTimer: number;
+    workerShutdownTimeout: number;
     log: Logger;
 };
 declare type Logger = {
@@ -17,7 +17,6 @@ export declare class BrowserPerRequestGroup<
     private deps;
     private workersByGroupId;
     private workersInitByGroupId;
-    private deletionTimeoutByWorkerId;
     private nextWorkerId;
     constructor(
         options: puppeteer.LaunchOptions,
@@ -27,9 +26,7 @@ export declare class BrowserPerRequestGroup<
     private repair;
     init(): Promise<void>;
     close(): Promise<void>;
-    private getGroupId;
     private createWorker;
-    private setupDeletionTimer;
     workerInstance(
         perBrowserOptions: puppeteer.LaunchOptions | undefined,
         onShutdown: (workerId: number) => void,
@@ -45,6 +42,7 @@ declare type WorkerDeps = {
     log: Logger;
     launchOptions: LaunchOptions;
     puppeteer: PuppeteerNode;
+    shutdownTimeout: number;
     browser: puppeteer.Browser;
     onShutdown: () => void;
 };
@@ -56,7 +54,9 @@ declare class Worker<JobData> implements WorkerInstance<JobData> {
     private openInstances;
     private waitingForRepairResolvers;
     private browserHealthCheckInterval;
+    private shutdownTimeout;
     constructor(deps: WorkerDeps);
+    refreshShutdownTimeout: () => void;
     repair(): Promise<void>;
     get id(): number;
     jobInstance(data: JobData | undefined): Promise<JobInstance>;
