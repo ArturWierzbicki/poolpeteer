@@ -15,6 +15,7 @@ const concurrencyTypes = [
     Cluster.CONCURRENCY_PAGE,
     Cluster.CONCURRENCY_CONTEXT,
     Cluster.CONCURRENCY_BROWSER,
+    Cluster.CONCURRENCY_BROWSER_PER_REQUEST_GROUP,
 ];
 
 beforeAll(async () => {

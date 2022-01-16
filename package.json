@@ -47,6 +47,8 @@
     "pretty-quick": "3.1.3"
   },
   "jest": {
+    "silent": false,
+    "verbose": true,
     "setupFilesAfterEnv": [
       "<rootDir>/test/_config/setup.js"
     ],

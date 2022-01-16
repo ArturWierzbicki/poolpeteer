@@ -13,11 +13,13 @@ import ConcurrencyImplementation, {
     ConcurrencyImplementationClassType,
 } from "./concurrency/ConcurrencyImplementation";
 import Workers from "./Workers";
+import { BrowserPerRequestGroup } from "./concurrency/builtInConcurrency";
 
 const debug = util.debugGenerator("Cluster");
 
 interface ClusterOptions<JobData = unknown> {
     concurrency: number | ConcurrencyImplementationClassType<JobData>;
+    workerShutdownTimer?: number; // applicable only to BrowserPerRequestGroup
     maxConcurrency: number;
     workerCreationDelay: number;
     puppeteerOptions: PuppeteerNodeLaunchOptions;
@@ -75,6 +77,7 @@ export default class Cluster<
     static CONCURRENCY_PAGE = 1; // shares cookies, etc.
     static CONCURRENCY_CONTEXT = 2; // no cookie sharing (uses contexts)
     static CONCURRENCY_BROWSER = 3; // no cookie sharing and individual processes (uses contexts)
+    static CONCURRENCY_BROWSER_PER_REQUEST_GROUP = 3; // share browser for requests from the same group
 
     private options: ClusterOptions<JobData>;
     private workers: Workers<JobData, ReturnData> = null as any as Workers<
@@ -157,6 +160,21 @@ export default class Cluster<
             this.browser = new builtInConcurrency.Browser(
                 browserOptions,
                 puppeteer
+            );
+        } else if (
+            this.options.concurrency ===
+            Cluster.CONCURRENCY_BROWSER_PER_REQUEST_GROUP
+        ) {
+            this.browser = new builtInConcurrency.BrowserPerRequestGroup(
+                browserOptions,
+                puppeteer,
+                {
+                    workerShutdownTimer:
+                        this.options.workerShutdownTimer ?? 10000,
+                    log: {
+                        debug: util.debugGenerator("BrowserPerRequestGroup"),
+                    },
+                }
             );
         } else if (typeof this.options.concurrency === "function") {
             this.browser = new this.options.concurrency(
@@ -319,11 +337,16 @@ export default class Cluster<
             throw new Error("No task function defined!");
         }
 
-        const result: WorkResult = await worker.handle(
-            jobFunction as TaskFunction<JobData, ReturnData>,
-            job,
-            this.options.timeout
-        );
+        let result: WorkResult = null as any;
+        try {
+            result = await worker.handle(
+                jobFunction as TaskFunction<JobData, ReturnData>,
+                job,
+                this.options.timeout
+            );
+        } catch (err: any) {
+            debug("swallowing " + err.message);
+        }
 
         if (result.type === "error") {
             if (job.executeCallbacks) {
