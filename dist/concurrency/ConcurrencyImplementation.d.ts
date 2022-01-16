@@ -1,5 +1,5 @@
-import * as puppeteer from 'puppeteer';
-declare type Puppeteer = typeof puppeteer;
+import * as puppeteer from "puppeteer";
+import { PuppeteerNode, PuppeteerNodeLaunchOptions } from "puppeteer";
 /**
  * ABSTRACT CLASS Needs to be implemented to manage one or more browsers via puppeteer instances
  *
@@ -7,13 +7,13 @@ declare type Puppeteer = typeof puppeteer;
  * One WorkerInstance per maxWorkers, one JobInstance per job
  */
 export default abstract class ConcurrencyImplementation<JobData = unknown> {
-    protected options: puppeteer.LaunchOptions;
-    protected puppeteer: Puppeteer;
+    protected options: PuppeteerNodeLaunchOptions;
+    protected puppeteer: PuppeteerNode;
     /**
      * @param options  Options that should be provided to puppeteer.launch
      * @param puppeteer  puppeteer object (like puppeteer or puppeteer-core)
      */
-    constructor(options: puppeteer.LaunchOptions, puppeteer: Puppeteer);
+    constructor(options: PuppeteerNodeLaunchOptions, puppeteer: PuppeteerNode);
     /**
      * Initializes the manager
      */
@@ -25,8 +25,14 @@ export default abstract class ConcurrencyImplementation<JobData = unknown> {
     /**
      * Creates a worker and returns it
      */
-    abstract workerInstance(perBrowserOptions: puppeteer.LaunchOptions | undefined, onShutdown: (workerId: number) => void, jobData?: JobData): Promise<WorkerInstance<JobData>>;
-    getExistingWorkerInstanceFor(jobData?: JobData): WorkerInstance<JobData> | undefined;
+    abstract workerInstance(
+        perBrowserOptions: puppeteer.LaunchOptions | undefined,
+        onShutdown: (workerId: number) => void,
+        jobData?: JobData
+    ): Promise<WorkerInstance<JobData>>;
+    getExistingWorkerInstanceFor(
+        jobData?: JobData
+    ): WorkerInstance<JobData> | undefined;
 }
 /**
  * WorkerInstances are created by calling the workerInstance function.
@@ -63,5 +69,8 @@ export interface ResourceData {
     page: puppeteer.Page;
     [key: string]: any;
 }
-export declare type ConcurrencyImplementationClassType<JobData = unknown> = new (options: puppeteer.LaunchOptions, puppeteer: any) => ConcurrencyImplementation<JobData>;
-export {};
+export declare type ConcurrencyImplementationClassType<JobData = unknown> =
+    new (
+        options: PuppeteerNodeLaunchOptions,
+        puppeteer: any
+    ) => ConcurrencyImplementation<JobData>;

@@ -1,6 +1,6 @@
-import Job from './Job';
-import Cluster, { TaskFunction } from './Cluster';
-import { WorkerInstance } from './concurrency/ConcurrencyImplementation';
+import Job from "./Job";
+import Cluster, { TaskFunction } from "./Cluster";
+import { WorkerInstance } from "./concurrency/ConcurrencyImplementation";
 interface WorkerOptions<JobData> {
     cluster: Cluster;
     args: string[];
@@ -8,15 +8,17 @@ interface WorkerOptions<JobData> {
     browser: WorkerInstance<JobData>;
 }
 export interface WorkError {
-    type: 'error';
+    type: "error";
     error: Error;
 }
 export interface WorkData {
-    type: 'success';
+    type: "success";
     data: any;
 }
 export declare type WorkResult = WorkError | WorkData;
-export default class Worker<JobData, ReturnData> implements WorkerOptions<JobData> {
+export default class Worker<JobData, ReturnData>
+    implements WorkerOptions<JobData>
+{
     cluster: Cluster;
     args: string[];
     id: number;
@@ -24,7 +26,11 @@ export default class Worker<JobData, ReturnData> implements WorkerOptions<JobDat
     activeJobs: Job<JobData, ReturnData>[];
     constructor({ cluster, args, id, browser }: WorkerOptions<JobData>);
     canHandle(job: Job<JobData, ReturnData>): Promise<boolean>;
-    handle(task: TaskFunction<JobData, ReturnData>, job: Job<JobData, ReturnData>, timeout: number): Promise<WorkResult>;
+    handle(
+        task: TaskFunction<JobData, ReturnData>,
+        job: Job<JobData, ReturnData>,
+        timeout: number
+    ): Promise<WorkResult>;
     close(): Promise<void>;
     isIdle(): boolean;
 }
