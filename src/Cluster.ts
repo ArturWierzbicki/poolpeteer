@@ -19,7 +19,7 @@ const debug = util.debugGenerator("Cluster");
 
 interface ClusterOptions<JobData = unknown> {
     concurrency: number | ConcurrencyImplementationClassType<JobData>;
-    workerShutdownTimer?: number; // applicable only to BrowserPerRequestGroup
+    workerShutdownTimeout?: number; // applicable only to BrowserPerRequestGroup
     maxConcurrency: number;
     workerCreationDelay: number;
     puppeteerOptions: PuppeteerNodeLaunchOptions;
@@ -77,7 +77,7 @@ export default class Cluster<
     static CONCURRENCY_PAGE = 1; // shares cookies, etc.
     static CONCURRENCY_CONTEXT = 2; // no cookie sharing (uses contexts)
     static CONCURRENCY_BROWSER = 3; // no cookie sharing and individual processes (uses contexts)
-    static CONCURRENCY_BROWSER_PER_REQUEST_GROUP = 3; // share browser for requests from the same group
+    static CONCURRENCY_BROWSER_PER_REQUEST_GROUP = 4; // share browser for requests from the same group
 
     private options: ClusterOptions<JobData>;
     private workers: Workers<JobData, ReturnData> = null as any as Workers<
@@ -165,14 +165,17 @@ export default class Cluster<
             this.options.concurrency ===
             Cluster.CONCURRENCY_BROWSER_PER_REQUEST_GROUP
         ) {
+            const logger = util.debugGenerator("BrowserPerRequestGroup");
             this.browser = new builtInConcurrency.BrowserPerRequestGroup(
                 browserOptions,
                 puppeteer,
                 {
-                    workerShutdownTimer:
-                        this.options.workerShutdownTimer ?? 10000,
+                    workerShutdownTimeout:
+                        this.options.workerShutdownTimeout ?? 5000,
                     log: {
-                        debug: util.debugGenerator("BrowserPerRequestGroup"),
+                        debug: (msg, ...args) => {
+                            logger(`${msg}${JSON.stringify(args)}`);
+                        },
                     },
                 }
             );

@@ -6,7 +6,7 @@ import * as puppeteer from "puppeteer";
 import { LaunchOptions, PuppeteerNode } from "puppeteer";
 
 type BrowserPerRequestGroupConcurrencyDeps = {
-    workerShutdownTimer: number;
+    workerShutdownTimeout: number;
     log: Logger;
 };
 
@@ -14,12 +14,21 @@ type Logger = {
     debug: (message?: string, ...optionalParams: any[]) => void;
 };
 
+const getGroupId = (jobData: unknown): string => {
+    const maybeDataWithGroupId = jobData as { groupId: string };
+
+    if (typeof maybeDataWithGroupId?.groupId === "string") {
+        return maybeDataWithGroupId.groupId;
+    }
+
+    return `${Math.random() * 1000}`;
+};
+
 export class BrowserPerRequestGroup<
     JobData
 > extends ConcurrencyImplementation<JobData> {
     private workersByGroupId: Record<string, Worker<JobData>> = {};
     private workersInitByGroupId: Record<string, Promise<Worker<JobData>>> = {};
-    private deletionTimeoutByWorkerId: Record<number, NodeJS.Timeout> = {};
     private nextWorkerId = 0;
 
     constructor(
@@ -43,16 +52,6 @@ export class BrowserPerRequestGroup<
             Object.values(this.workersByGroupId).map((w) => w.close())
         );
     }
-
-    private getGroupId = (jobData: unknown): string => {
-        const maybeDataWithGroupId = jobData as { groupId: string };
-
-        if (typeof maybeDataWithGroupId?.groupId === "string") {
-            return maybeDataWithGroupId.groupId;
-        }
-
-        return `${Math.random() * 1000}`;
-    };
 
     private createWorker = async (
         options: LaunchOptions,
@@ -80,37 +79,12 @@ export class BrowserPerRequestGroup<
             browser,
             puppeteer: this.puppeteer,
             launchOptions: options,
-            onShutdown: () => onShutdown(workerId),
+            shutdownTimeout: this.deps.workerShutdownTimeout,
+            onShutdown: () => {
+                delete this.workersByGroupId[groupId];
+                onShutdown(workerId);
+            },
         });
-    };
-
-    private setupDeletionTimer = (workerId: number, groupId: string) => {
-        const existingTimeout = this.deletionTimeoutByWorkerId[workerId];
-        if (existingTimeout) {
-            this.deps.log.debug(
-                `Refreshing worker deletion timeout`,
-                "groupId",
-                groupId,
-                "workerId",
-                workerId
-            );
-            existingTimeout.refresh();
-            return;
-        }
-
-        this.deletionTimeoutByWorkerId[workerId] = setTimeout(() => {
-            const worker = this.workersByGroupId[groupId];
-            this.deps.log.debug(
-                `Shutting down worker after timeout`,
-                "groupId",
-                groupId,
-                "workerId",
-                workerId
-            );
-            delete this.workersByGroupId[groupId];
-            delete this.deletionTimeoutByWorkerId[workerId];
-            worker.close();
-        }, this.deps.workerShutdownTimer);
     };
 
     async workerInstance(
@@ -118,7 +92,7 @@ export class BrowserPerRequestGroup<
         onShutdown: (workerId: number) => void,
         jobData: JobData
     ) {
-        const groupId = this.getGroupId(jobData);
+        const groupId = getGroupId(jobData);
 
         this.deps.log.debug(`Retrieving new worker!`, "groupId", groupId);
 
@@ -135,7 +109,7 @@ export class BrowserPerRequestGroup<
 
         const existingWorker = this.workersByGroupId[groupId];
         if (existingWorker) {
-            this.setupDeletionTimer(existingWorker.id, groupId);
+            existingWorker.refreshShutdownTimeout();
             return existingWorker;
         }
 
@@ -158,7 +132,6 @@ export class BrowserPerRequestGroup<
                 );
 
                 this.workersByGroupId[groupId] = worker;
-                this.setupDeletionTimer(worker.id, groupId);
             })
             .finally(() => {
                 this.deps.log.debug(
@@ -175,7 +148,7 @@ export class BrowserPerRequestGroup<
     getExistingWorkerInstanceFor(
         jobData?: JobData
     ): WorkerInstance<JobData> | undefined {
-        const groupId = this.getGroupId(jobData);
+        const groupId = getGroupId(jobData);
         this.deps.log.debug("Retrieving existing worker", "groupId", groupId);
 
         const worker = this.workersByGroupId[groupId];
@@ -187,7 +160,7 @@ export class BrowserPerRequestGroup<
                 "workerId",
                 worker.id
             );
-            this.setupDeletionTimer(worker.id, groupId);
+            worker.refreshShutdownTimeout();
         }
 
         this.deps.log.debug(
@@ -208,6 +181,7 @@ type WorkerDeps = {
     log: Logger;
     launchOptions: LaunchOptions;
     puppeteer: PuppeteerNode;
+    shutdownTimeout: number;
     browser: puppeteer.Browser;
     onShutdown: () => void;
 };
@@ -219,6 +193,7 @@ class Worker<JobData> implements WorkerInstance<JobData> {
     private openInstances = 0;
     private waitingForRepairResolvers: Array<(val?: unknown) => void> = [];
     private browserHealthCheckInterval: NodeJS.Timeout;
+    private shutdownTimeout: NodeJS.Timeout | undefined;
 
     constructor(private deps: WorkerDeps) {
         this.currentBrowser = deps.browser;
@@ -227,7 +202,33 @@ class Worker<JobData> implements WorkerInstance<JobData> {
                 this.close();
             }
         }, 20000);
+        this.refreshShutdownTimeout();
     }
+
+    refreshShutdownTimeout = () => {
+        if (this.openInstances !== 0) {
+            return;
+        }
+
+        if (this.shutdownTimeout) {
+            clearTimeout(this.shutdownTimeout);
+        }
+
+        this.shutdownTimeout = setTimeout(() => {
+            if (this.openInstances === 0) {
+                this.close();
+                this.deps.log.debug(
+                    `Shutting down worker after timeout`,
+                    "groupId",
+                    this.deps.groupId,
+                    "workerId",
+                    this.deps.id,
+                    "activeJobs",
+                    this.openInstances
+                );
+            }
+        }, this.deps.shutdownTimeout);
+    };
 
     async repair() {
         if (this.openInstances !== 0 || this.repairing) {
@@ -304,6 +305,11 @@ class Worker<JobData> implements WorkerInstance<JobData> {
         }
 
         const page = await this.currentBrowser.newPage();
+
+        if (this.shutdownTimeout) {
+            clearTimeout(this.shutdownTimeout);
+            this.shutdownTimeout = undefined;
+        }
         this.openInstances += 1;
 
         this.deps.log.debug(
@@ -322,6 +328,8 @@ class Worker<JobData> implements WorkerInstance<JobData> {
             },
             close: async () => {
                 this.openInstances -= 1;
+
+                this.refreshShutdownTimeout();
                 await page.close();
             },
         };
@@ -329,13 +337,20 @@ class Worker<JobData> implements WorkerInstance<JobData> {
 
     async canHandle(data: JobData | undefined) {
         // we can limit the number of open pages with this function
-        return true;
+        return getGroupId(data) === this.deps.groupId;
     }
 
     async close(): Promise<void> {
+        if (this.isClosed) {
+            return;
+        }
+
         this.isClosed = true;
 
         clearInterval(this.browserHealthCheckInterval);
+        if (this.shutdownTimeout) {
+            clearTimeout(this.shutdownTimeout);
+        }
         await this.deps.onShutdown();
 
         if (this.repairing) {
