@@ -78,6 +78,7 @@ export default class Cluster<
     static CONCURRENCY_CONTEXT = 2; // no cookie sharing (uses contexts)
     static CONCURRENCY_BROWSER = 3; // no cookie sharing and individual processes (uses contexts)
     static CONCURRENCY_BROWSER_PER_REQUEST_GROUP = 4; // share browser for requests from the same group
+    static CONCURRENCY_CONTEXT_PER_REQUEST_GROUP = 5; // share context for requests from the same group
 
     private options: ClusterOptions<JobData>;
     private workers: Workers<JobData, ReturnData> = null as any as Workers<
@@ -167,6 +168,24 @@ export default class Cluster<
         ) {
             const logger = util.debugGenerator("BrowserPerRequestGroup");
             this.browser = new builtInConcurrency.BrowserPerRequestGroup(
+                browserOptions,
+                puppeteer,
+                {
+                    workerShutdownTimeout:
+                        this.options.workerShutdownTimeout ?? 5000,
+                    log: {
+                        debug: (msg, ...args) => {
+                            logger(`${msg}${JSON.stringify(args)}`);
+                        },
+                    },
+                }
+            );
+        } else if (
+            this.options.concurrency ===
+            Cluster.CONCURRENCY_CONTEXT_PER_REQUEST_GROUP
+        ) {
+            const logger = util.debugGenerator("BrowserPerRequestGroup");
+            this.browser = new builtInConcurrency.ContextPerRequestGroup(
                 browserOptions,
                 puppeteer,
                 {

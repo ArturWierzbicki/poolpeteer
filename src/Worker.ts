@@ -53,9 +53,11 @@ export default class Worker<JobData, ReturnData>
     }
 
     public async canHandle(job: Job<JobData, ReturnData>): Promise<boolean> {
-        return (
-            this.browser.canHandle?.(job.data) || this.activeJobs.length === 0
-        );
+        if (this.browser.canHandle) {
+            return this.browser.canHandle(job.data);
+        }
+
+        return this.activeJobs.length === 0;
     }
 
     public async handle(

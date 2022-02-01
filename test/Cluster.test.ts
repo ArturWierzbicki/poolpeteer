@@ -16,6 +16,7 @@ const concurrencyTypes = [
     Cluster.CONCURRENCY_CONTEXT,
     Cluster.CONCURRENCY_BROWSER,
     Cluster.CONCURRENCY_BROWSER_PER_REQUEST_GROUP,
+    Cluster.CONCURRENCY_CONTEXT_PER_REQUEST_GROUP,
 ];
 
 beforeAll(async () => {
@@ -99,8 +100,11 @@ describe("options", () => {
 
                 const cluster = await Cluster.launch({
                     concurrency,
-                    puppeteerOptions: { args: ["--no-sandbox"] },
-                    maxConcurrency: 1,
+                    puppeteerOptions: {
+                        headless: false,
+                        args: ["--no-sandbox"],
+                    },
+                    maxConcurrency: 2,
                     skipDuplicateUrls: true,
                 });
                 cluster.on("taskerror", (err) => {
@@ -797,8 +801,13 @@ describe("Repair", () => {
                     expect(true).toBe(true);
                 });
 
+                console.log("idling...");
+
                 await cluster.idle();
+                console.log("closing...");
+
                 await cluster.close();
+                console.log("closed...");
             });
         });
     });
