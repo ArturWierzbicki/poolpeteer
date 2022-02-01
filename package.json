@@ -1,5 +1,5 @@
 {
-  "name": "puppeteer-cluster",
+  "name": "poolpeteer",
   "version": "0.22.1",
   "description": "Cluster management for puppeteer",
   "main": "dist/index.js",
@@ -15,20 +15,21 @@
   "author": "Thomas Dondorf",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thomasdondorf/puppeteer-cluster.git"
+    "url": "https://github.com/ArturWierzbicki/poolpeteer.git"
   },
-  "homepage": "https://github.com/thomasdondorf/puppeteer-cluster",
+  "homepage": "https://github.com/ArturWierzbicki/poolpeteer",
   "keywords": [
     "puppeteer",
     "cluster",
-    "pool"
+    "pool",
+    "poolpeteer"
   ],
   "license": "MIT",
   "dependencies": {
     "debug": "^4.1.1"
   },
   "peerDependencies": {
-    "puppeteer": "^1.5.0 || ^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0"
+    "puppeteer": "^13.0.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.5",
