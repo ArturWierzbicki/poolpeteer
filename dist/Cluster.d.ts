@@ -38,6 +38,7 @@ export default class Cluster<
     static CONCURRENCY_CONTEXT: number;
     static CONCURRENCY_BROWSER: number;
     static CONCURRENCY_BROWSER_PER_REQUEST_GROUP: number;
+    static CONCURRENCY_CONTEXT_PER_REQUEST_GROUP: number;
     private options;
     private workers;
     private allTargetCount;
