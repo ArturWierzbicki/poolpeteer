@@ -3,6 +3,6 @@ data/
 .idea/
 .vscode/
 coverage/
-
+dist/
 
 examples/top-1m.csv
