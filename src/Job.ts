@@ -1,6 +1,5 @@
-
-import { URL } from 'url';
-import { TaskFunction } from './Cluster';
+import { URL } from "url";
+import { TaskFunction } from "./Cluster";
 
 export type ExecuteResolve = (value?: any) => void;
 export type ExecuteReject = (reason?: any) => void;
@@ -10,7 +9,6 @@ export interface ExecuteCallbacks {
 }
 
 export default class Job<JobData, ReturnData> {
-
     public data?: JobData;
     public taskFunction: TaskFunction<JobData, ReturnData> | undefined;
     public executeCallbacks: ExecuteCallbacks | undefined;
@@ -21,7 +19,7 @@ export default class Job<JobData, ReturnData> {
     public constructor(
         data?: JobData,
         taskFunction?: TaskFunction<JobData, ReturnData>,
-        executeCallbacks?: ExecuteCallbacks,
+        executeCallbacks?: ExecuteCallbacks
     ) {
         this.data = data;
         this.taskFunction = taskFunction;
@@ -29,15 +27,27 @@ export default class Job<JobData, ReturnData> {
     }
 
     public getUrl(): string | undefined {
-        if (!this.data) {
+        const data = this.data as any;
+
+        if (!data) {
             return undefined;
         }
-        if (typeof this.data === 'string') {
-            return this.data;
+        if (typeof data === "string") {
+            return data;
         }
-        if (typeof (this.data as any).url === 'string') {
-            return (this.data as any).url;
+        if (typeof data.url === "string") {
+            return data.url;
         }
+
+        const options = data.options;
+        if (
+            options &&
+            typeof options === "object" &&
+            typeof options.url === "string"
+        ) {
+            return options.url;
+        }
+
         return undefined;
     }
 
@@ -61,5 +71,4 @@ export default class Job<JobData, ReturnData> {
         this.tries += 1;
         this.lastError = error;
     }
-
 }

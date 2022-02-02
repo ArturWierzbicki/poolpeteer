@@ -1,4 +1,4 @@
-import * as os from 'os';
+import * as os from "os";
 
 interface SystemLoad {
     idle: number;
@@ -15,7 +15,6 @@ const MEASURE_TIMESPAN = 5000;
 const loadListSize = MEASURE_TIMESPAN / MEASURE_INTERVAL;
 
 export default class SystemMonitor {
-
     private cpuUsage: number = 0;
     private memoryUsage: number = 0;
 
@@ -27,14 +26,14 @@ export default class SystemMonitor {
     public init() {
         this.calcLoad();
         return new Promise((resolve) => {
-            setTimeout(
-                () => {
-                    this.calcLoad();
-                    this.interval = setInterval(() => this.calcLoad(), MEASURE_INTERVAL);
-                    resolve();
-                },
-                INIT_INTERVAL,
-            );
+            setTimeout(() => {
+                this.calcLoad();
+                this.interval = setInterval(
+                    () => this.calcLoad(),
+                    MEASURE_INTERVAL
+                );
+                resolve(undefined);
+            }, INIT_INTERVAL);
         });
     }
 
@@ -42,7 +41,8 @@ export default class SystemMonitor {
         clearInterval(this.interval as NodeJS.Timer);
     }
 
-    private calcLoad() { // based on https://gist.github.com/bag-man/5570809
+    private calcLoad() {
+        // based on https://gist.github.com/bag-man/5570809
         let totalIdle = 0;
         let totalTick = 0;
         const cpus = os.cpus();
@@ -71,8 +71,8 @@ export default class SystemMonitor {
             const idleDifference = currentLoad.idle - compareLoad.idle;
             const totalDifference = currentLoad.total - compareLoad.total;
 
-            this.cpuUsage = 100 - (100 * idleDifference / totalDifference);
-            this.memoryUsage = 100 - (100 * os.freemem() / os.totalmem());
+            this.cpuUsage = 100 - (100 * idleDifference) / totalDifference;
+            this.memoryUsage = 100 - (100 * os.freemem()) / os.totalmem();
         }
 
         this.loads.push(currentLoad);
