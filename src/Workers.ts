@@ -116,7 +116,13 @@ export default class Workers<JobData = any, ReturnData = any> {
         if (existingInstance) {
             return this.getWorkerById(existingInstance.id);
         }
-        return this.workers.find((w) => w.canHandle(job));
+
+        for (const worker of this.workers) {
+            if (await worker.canHandle(job)) {
+                return worker;
+            }
+        }
+        return undefined;
     }
 
     async canHandle(job: Job<JobData, ReturnData>) {
