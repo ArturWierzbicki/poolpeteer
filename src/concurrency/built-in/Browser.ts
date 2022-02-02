@@ -1,9 +1,12 @@
+import * as puppeteer from "puppeteer";
+import { PuppeteerNodeLaunchOptions } from "puppeteer";
 
-import * as puppeteer from 'puppeteer';
+import { debugGenerator, timeoutExecute } from "../../util";
+import ConcurrencyImplementation, {
+    WorkerInstance,
+} from "../ConcurrencyImplementation";
 
-import { debugGenerator, timeoutExecute } from '../../util';
-import ConcurrencyImplementation, { WorkerInstance } from '../ConcurrencyImplementation';
-const debug = debugGenerator('BrowserConcurrency');
+const debug = debugGenerator("BrowserConcurrency");
 
 const BROWSER_TIMEOUT = 5000;
 
@@ -11,20 +14,29 @@ export default class Browser extends ConcurrencyImplementation {
     public async init() {}
     public async close() {}
 
-    public async workerInstance(perBrowserOptions: puppeteer.LaunchOptions | undefined):
-        Promise<WorkerInstance> {
+    private nextWorkerId = 0;
+
+    public async workerInstance(
+        perBrowserOptions: PuppeteerNodeLaunchOptions | undefined
+    ): Promise<WorkerInstance> {
+        const workerId = this.nextWorkerId;
+        this.nextWorkerId = this.nextWorkerId + 1;
 
         const options = perBrowserOptions || this.options;
-        let chrome = await this.puppeteer.launch(options) as puppeteer.Browser;
+        let chrome = await this.puppeteer.launch(options);
         let page: puppeteer.Page;
-        let context: any; // puppeteer typings are old...
+        let context: puppeteer.BrowserContext;
 
         return {
+            id: workerId,
             jobInstance: async () => {
-                await timeoutExecute(BROWSER_TIMEOUT, (async () => {
-                    context = await chrome.createIncognitoBrowserContext();
-                    page = await context.newPage();
-                })());
+                await timeoutExecute(
+                    BROWSER_TIMEOUT,
+                    (async () => {
+                        context = await chrome.createIncognitoBrowserContext();
+                        page = await context.newPage();
+                    })()
+                );
 
                 return {
                     resources: {
@@ -42,7 +54,7 @@ export default class Browser extends ConcurrencyImplementation {
             },
 
             repair: async () => {
-                debug('Starting repair');
+                debug("Starting repair");
                 try {
                     // will probably fail, but just in case the repair was not necessary
                     await chrome.close();
@@ -53,5 +65,4 @@ export default class Browser extends ConcurrencyImplementation {
             },
         };
     }
-
 }

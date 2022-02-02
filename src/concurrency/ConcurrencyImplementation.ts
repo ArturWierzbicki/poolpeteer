@@ -1,5 +1,5 @@
-
-import { Page, LaunchOptions } from 'puppeteer';
+import * as puppeteer from "puppeteer";
+import { PuppeteerNode, PuppeteerNodeLaunchOptions } from "puppeteer";
 
 /**
  * ABSTRACT CLASS Needs to be implemented to manage one or more browsers via puppeteer instances
@@ -7,16 +7,18 @@ import { Page, LaunchOptions } from 'puppeteer';
  * The ConcurrencyImplementation creates WorkerInstances. Workers create JobInstances:
  * One WorkerInstance per maxWorkers, one JobInstance per job
  */
-export default abstract class ConcurrencyImplementation {
-
-    protected options: LaunchOptions;
-    protected puppeteer: any;
+export default abstract class ConcurrencyImplementation<JobData = unknown> {
+    protected options: PuppeteerNodeLaunchOptions;
+    protected puppeteer: PuppeteerNode;
 
     /**
      * @param options  Options that should be provided to puppeteer.launch
      * @param puppeteer  puppeteer object (like puppeteer or puppeteer-core)
      */
-    public constructor(options: LaunchOptions, puppeteer: any) {
+    public constructor(
+        options: PuppeteerNodeLaunchOptions,
+        puppeteer: PuppeteerNode
+    ) {
         this.options = options;
         this.puppeteer = puppeteer;
     }
@@ -24,27 +26,35 @@ export default abstract class ConcurrencyImplementation {
     /**
      * Initializes the manager
      */
-    public abstract async init(): Promise<void>;
+    public abstract init(): Promise<void>;
 
     /**
      * Closes the manager (called when cluster is about to shut down)
      */
-    public abstract async close(): Promise<void>;
+    public abstract close(): Promise<void>;
 
     /**
      * Creates a worker and returns it
      */
-    public abstract async workerInstance(perBrowserOptions: LaunchOptions | undefined):
-        Promise<WorkerInstance>;
+    public abstract workerInstance(
+        perBrowserOptions: puppeteer.LaunchOptions | undefined,
+        onShutdown: (workerId: number) => void,
+        jobData?: JobData
+    ): Promise<WorkerInstance<JobData>>;
 
+    public getExistingWorkerInstanceFor(
+        jobData?: JobData
+    ): WorkerInstance<JobData> | undefined {
+        return undefined;
+    }
 }
 
 /**
  * WorkerInstances are created by calling the workerInstance function.
  * In case maxWorkers is set to 4, 4 workers will be created.
  */
-export interface WorkerInstance {
-    jobInstance: () => Promise<JobInstance>;
+export interface WorkerInstance<JobData = unknown> {
+    jobInstance: (data?: JobData) => Promise<JobInstance>;
 
     /**
      * Closes the worker (called when the cluster is about to shut down)
@@ -56,6 +66,10 @@ export interface WorkerInstance {
      * an error)
      */
     repair: () => Promise<void>;
+
+    canHandle?: (data?: JobData) => Promise<boolean>;
+
+    id: number;
 }
 
 /**
@@ -74,11 +88,11 @@ export interface JobInstance {
 }
 
 export interface ResourceData {
-    page: Page;
+    page: puppeteer.Page;
     [key: string]: any;
 }
 
-export type ConcurrencyImplementationClassType = new (
-    options: LaunchOptions,
-    puppeteer: any,
-) => ConcurrencyImplementation;
+export type ConcurrencyImplementationClassType<JobData = unknown> = new (
+    options: PuppeteerNodeLaunchOptions,
+    puppeteer: any
+) => ConcurrencyImplementation<JobData>;
