@@ -1,6 +1,6 @@
 {
   "name": "poolpeteer",
-  "version": "0.22.1",
+  "version": "0.22.3",
   "description": "Cluster management for puppeteer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

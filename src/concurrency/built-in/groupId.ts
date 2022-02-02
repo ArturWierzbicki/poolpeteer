@@ -8,10 +8,15 @@ function hasRef(arg: any): arg is object | Function {
 const groupIdByRef = new WeakMap<object, Primitive>();
 
 export const getGroupId = (jobData: unknown): Primitive => {
-    const maybeDataWithGroupId = jobData as { groupId: string };
+    const maybeDataWithGroupId = jobData as { groupId: unknown };
 
-    if (typeof maybeDataWithGroupId?.groupId === "string") {
-        return maybeDataWithGroupId.groupId;
+    if (
+        maybeDataWithGroupId &&
+        typeof maybeDataWithGroupId === "object" &&
+        "groupId" in maybeDataWithGroupId &&
+        !hasRef(maybeDataWithGroupId.groupId)
+    ) {
+        return maybeDataWithGroupId.groupId as Primitive;
     }
 
     if (hasRef(jobData)) {

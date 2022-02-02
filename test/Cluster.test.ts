@@ -15,7 +15,6 @@ const concurrencyTypes = [
     Cluster.CONCURRENCY_PAGE,
     Cluster.CONCURRENCY_CONTEXT,
     Cluster.CONCURRENCY_BROWSER,
-    Cluster.CONCURRENCY_BROWSER_PER_REQUEST_GROUP,
     Cluster.CONCURRENCY_CONTEXT_PER_REQUEST_GROUP,
 ];
 
@@ -70,7 +69,7 @@ describe("options", () => {
 
         // one job sets the cookie, the other page reads the cookie
         cluster.queue(TEST_URL);
-        cluster.queue(TEST_URL);
+        cluster.queue(`${TEST_URL}differentPage`);
 
         await cluster.idle();
         await cluster.close();
@@ -89,6 +88,11 @@ describe("options", () => {
     test("no cookie sharing in Cluster.CONCURRENCY_BROWSER", async () => {
         expect.assertions(0);
         await cookieTest(Cluster.CONCURRENCY_BROWSER);
+    });
+
+    test("no cookie sharing in Cluster.CONCURRENCY_CONTEXT_PER_REQUEST_GROUP", async () => {
+        expect.assertions(0);
+        await cookieTest(Cluster.CONCURRENCY_CONTEXT_PER_REQUEST_GROUP);
     });
 
     // repeat remaining tests for all concurrency options
