@@ -3,11 +3,12 @@ import ConcurrencyImplementation, {
     JobInstance,
 } from "../ConcurrencyImplementation";
 import * as puppeteer from "puppeteer";
-import { LaunchOptions, PuppeteerNode } from "puppeteer";
+import { LaunchOptions, Page, PuppeteerNode } from "puppeteer";
 import { timeoutExecute } from "../../util";
 import { getGroupId, Primitive } from "./groupId";
 
 type ContextPerRequestGroupDeps = {
+    maxActiveJobsPerContext: number;
     workerShutdownTimeout: number;
     log: Logger;
 };
@@ -203,6 +204,7 @@ export class ContextPerRequestGroup<
             log: this.deps.log,
             id: workerId,
             groupId,
+            maxActiveJobs: this.deps.maxActiveJobsPerContext,
             context: context as puppeteer.BrowserContext,
             onRepairRequested: () => {
                 this.repairRequested = true;
@@ -332,6 +334,7 @@ type WorkerDeps = {
     id: number;
     log: Logger;
     context: puppeteer.BrowserContext;
+    maxActiveJobs: number;
     shutdownTimeout: number;
     onShutdown: () => void;
     onRepairRequested: () => void;
@@ -346,6 +349,7 @@ class Worker<JobData> implements WorkerInstance<JobData> {
 
     activeJobs = 0;
     isClosed = false;
+    startingJobs = 0;
 
     constructor(private deps: WorkerDeps) {
         this.currentContext = deps.context;
@@ -435,32 +439,39 @@ class Worker<JobData> implements WorkerInstance<JobData> {
     }
 
     async jobInstance(data: JobData | undefined): Promise<JobInstance> {
-        if (this.repairRequested) {
+        this.startingJobs += 1;
+
+        let page: Page;
+        try {
+            if (this.repairRequested) {
+                this.deps.log.debug(
+                    "Waiting for repair to finish before returning new job instance",
+                    "groupId",
+                    this.deps.groupId,
+                    "workerId",
+                    this.deps.id
+                );
+                await this.repair();
+            }
+
             this.deps.log.debug(
-                "Waiting for repair to finish before returning new job instance",
+                "returning new job instance",
                 "groupId",
                 this.deps.groupId,
                 "workerId",
-                this.deps.id
+                this.deps.id,
+                "activeJobs",
+                this.activeJobs
             );
-            await this.repair();
-        }
 
-        this.deps.log.debug(
-            "returning new job instance",
-            "groupId",
-            this.deps.groupId,
-            "workerId",
-            this.deps.id,
-            "activeJobs",
-            this.activeJobs
-        );
+            page = await this.currentContext.newPage();
 
-        const page = await this.currentContext.newPage();
-
-        if (this.shutdownTimeout) {
-            clearTimeout(this.shutdownTimeout);
-            this.shutdownTimeout = undefined;
+            if (this.shutdownTimeout) {
+                clearTimeout(this.shutdownTimeout);
+                this.shutdownTimeout = undefined;
+            }
+        } finally {
+            this.startingJobs -= 1;
         }
         this.activeJobs += 1;
 
@@ -509,6 +520,10 @@ class Worker<JobData> implements WorkerInstance<JobData> {
             matchingJobGroupId,
             "openInstances",
             this.activeJobs,
+            "startingInstances",
+            this.startingJobs,
+            "maxOpenInstances",
+            this.deps.maxActiveJobs,
             "repairing",
             this.repairing,
             "repairRequested",
@@ -521,7 +536,10 @@ class Worker<JobData> implements WorkerInstance<JobData> {
             return false;
         }
         // we can limit the number of open pages with this function
-        return matchingJobGroupId;
+        return (
+            matchingJobGroupId &&
+            this.activeJobs + this.startingJobs < this.deps.maxActiveJobs
+        );
     }
 
     async close(): Promise<void> {

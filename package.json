@@ -1,6 +1,6 @@
 {
   "name": "poolpeteer",
-  "version": "0.22.20",
+  "version": "0.23.3",
   "description": "Cluster management for puppeteer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,7 +29,7 @@
     "debug": "^4.1.1"
   },
   "peerDependencies": {
-    "puppeteer": "^13.0.0"
+    "puppeteer": "^13.1.1"
   },
   "devDependencies": {
     "@types/debug": "^4.1.5",
@@ -41,8 +41,8 @@
     "jest": "27.4.7",
     "prettier": "2.5.1",
     "pretty-quick": "3.1.3",
-    "puppeteer": "13.0.1",
-    "puppeteer-core": "13.0.1",
+    "puppeteer": "^13.1.1",
+    "puppeteer-core": "^13.1.1",
     "tree-kill": "^1.2.2",
     "ts-jest": "27.1.3",
     "typescript": "4.5.4"

@@ -18,7 +18,8 @@ const debug = util.debugGenerator("Cluster");
 
 interface ClusterOptions<JobData = unknown> {
     concurrency: number | ConcurrencyImplementationClassType<JobData>;
-    workerShutdownTimeout?: number; // applicable only to BrowserPerRequestGroup
+    workerShutdownTimeout?: number; // applicable only to ContextPerRequestGroup
+    maxActiveJobsPerContext: number; // applicable only to ContextPerRequestGroup
     maxConcurrency: number;
     workerCreationDelay: number;
     puppeteerOptions: PuppeteerNodeLaunchOptions;
@@ -41,6 +42,7 @@ const DEFAULT_OPTIONS: ClusterOptions = {
     concurrency: 2, // CONTEXT
     maxConcurrency: 1,
     workerCreationDelay: 0,
+    maxActiveJobsPerContext: 15,
     puppeteerOptions: {
         // headless: false, // just for testing...
     },
@@ -169,6 +171,8 @@ export default class Cluster<
                 browserOptions,
                 puppeteer,
                 {
+                    maxActiveJobsPerContext:
+                        this.options.maxActiveJobsPerContext ?? 15,
                     workerShutdownTimeout:
                         this.options.workerShutdownTimeout ?? 5000,
                     log: {
