@@ -155,7 +155,7 @@ export class ContextPerRequestGroup<
 
     private async createContext(): Promise<puppeteer.BrowserContext> {
         const browser = this.getBrowser();
-        return browser.createIncognitoBrowserContext();
+        return browser.createBrowserContext();
     }
 
     private shouldRepair(): boolean {

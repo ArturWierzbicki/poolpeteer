@@ -3,7 +3,7 @@ import SingleBrowserImplementation from "../SingleBrowserImplementation";
 
 export default class Context extends SingleBrowserImplementation {
     protected async createResources(): Promise<ResourceData> {
-        const context = await this.getBrowser().createIncognitoBrowserContext();
+        const context = await this.getBrowser().createBrowserContext();
         const page = await context.newPage();
         return {
             context,
